@@ -1,7 +1,10 @@
+import certifi
 import configparser
 import os
 import json
 import logging
+import pycurl
+from io import BytesIO
 from telegram import Update
 from telegram.ext import Updater, CallbackContext, CommandHandler
 
@@ -20,33 +23,41 @@ logging.basicConfig(filename='tg.log',
 					format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
 				   	level = logging.INFO)
 
+def getData(url):
+    buffer = BytesIO()
+    c = pycurl.Curl()
+    c.setopt(c.URL, url)
+    c.setopt(c.WRITEDATA, buffer)
+    c.setopt(pycurl.USERAGENT, 'Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Googlebot/2.1; +http://www.google.com/bot.html) Safari/537.36')
+    c.setopt(c.CAINFO, certifi.where())
+    c.perform()
+    c.close()
+    body = buffer.getvalue()
+    return body
+
 def start(update: Update, context: CallbackContext):
 	output = "Olá! Eu sou a S4M"
 	context.bot.send_message(chat_id=update.effective_chat.id, text=output)
 
 def btc(update: Update, context: CallbackContext):
-	os.system("curl -s --location --request GET 'api.coincap.io/v2/assets/bitcoin' > /tmp/bitcoin.json")
-	with open ("/tmp/bitcoin.json") as f:
-		data = json.load(f)
-	price = data["data"]["priceUsd"]
-	formatPrice = round(float(price))
+	url = "https://api.coincap.io/v2/assets/bitcoin"
+	data = json.loads(getData(url))
+	bitcoinPrice = data["data"]["priceUsd"]
+	formatPrice = round(float(bitcoinPrice))
 	output = f"O preço do Bitcoin é de ${formatPrice}"
 	context.bot.send_message(chat_id=update.effective_chat.id, text=output)
 	
 def peopleinspace(update: Update, context: CallbackContext):
-	os.system("curl -s https://www.howmanypeopleareinspacerightnow.com/peopleinspace.json > /tmp/peopleinspace.json")
-	with open("/tmp/peopleinspace.json") as f:
-		data = json.load(f)
-		npeople = data["number"]
-	output = f"Tem {npeople} pessoas no espaço agora!"
+	url = "https://www.howmanypeopleareinspacerightnow.com/peopleinspace.json"
+	data = json.loads(getData(url))
+	numberPeople = data["number"]
+	output = f"Tem {numberPeople} pessoas no espaço agora!"
 	context.bot.send_message(chat_id=update.effective_chat.id, text=output)
 
 def weather(update: Update, context: CallbackContext):
-	req = f"https://api.hgbrasil.com/weather?key={weatherKey}&woeid=455821"
-	os.system(f"curl -s '{req}' > /tmp/weather.json")
-	with open("/tmp/weather.json") as f:
-		data = json.load(f)
-		output = f"{data['results']['city']} : Temp: {data['results']['temp']}C\n^_^"
+	url = f"https://api.hgbrasil.com/weather?key={weatherKey}&woeid=455821"
+	data = json.loads(getData(url))
+	output = f"{data['results']['city']} : Temp: {data['results']['temp']}C\n^_^"
 	context.bot.send_message(chat_id=update.effective_chat.id, text=output)
 	
 # Para todo novo comando a ser acrescentado se deve adicionar ao handler.
